@@ -5,7 +5,7 @@ on:
 
 jobs:
   usar-receta-compartida:
-    uses: katalinaino/AUY1104-shared-workflows/.github/workflows/deploy-api.yaml@main
+    uses: katalinaino/shared-workflows/.github/workflows/deploy-api.yaml@main
     with:
       image-name: demo-api
       image-tag: ${{ github.ref_name }}
