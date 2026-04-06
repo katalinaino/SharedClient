@@ -1,13 +1,14 @@
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*.*.*' # Solo al etiquetar v1.0.0, v2.3.4, etc.
 
 jobs:
   usar-receta-compartida:
     uses: katalinaino/shared-workflows/.github/workflows/deploy-api.yaml@main
+    with:
       image-name: demo-api
-      image-tag: ${{ github.ref_name }}
+      image-tag: ${{ github.ref_name }} # ej. v1.2.3 — misma etiqueta que en Git
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
