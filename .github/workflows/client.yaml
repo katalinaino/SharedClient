@@ -1,0 +1,8 @@
+on: [push]
+
+jobs:
+  mi-job:
+    uses: katalinaino/shared-workflows/.github/workflows/deploy-api.yaml@main
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
