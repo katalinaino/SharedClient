@@ -1,0 +1,26 @@
+name: Test Pipeline
+
+on:
+  push:
+    branches-ignore:
+      - main
+    tags-ignore:
+      - '**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Configurar entorno (ajusta según tu lenguaje)
+        uses: actions/setup-node@v3   
+        with:
+          node-version: '18'
+
+      - name: Instalar dependencias
+        run: npm install              
+
+      - name: Ejecutar pruebas
+        run: npm test 
