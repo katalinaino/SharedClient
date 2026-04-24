@@ -11,16 +11,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout código
-        uses: actions/checkout@v3
+      - name: Checkout codigo
+        uses: actions/checkout@v4
 
-      - name: Configurar entorno (ajusta según tu lenguaje)
-        uses: actions/setup-node@v3   
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
       - name: Instalar dependencias
-        run: npm install              
+        run: npm install
 
       - name: Ejecutar pruebas
-        run: npm test 
+        run: npm test
