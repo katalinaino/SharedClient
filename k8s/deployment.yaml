@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: docker push kata63/demo-api:latest
+          image: kata63/demo-api:latest
           imagePullPolicy: Always
           ports:
             - name: http
