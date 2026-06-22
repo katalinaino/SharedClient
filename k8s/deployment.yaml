@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: kata63/demo-api:latest
+          image: kata63/demo-api:version-inexistente
           imagePullPolicy: Always
           ports:
             - name: http
