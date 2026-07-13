@@ -22,19 +22,13 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
-  debug-output:
-    name: Debug output
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "full-image output = '${{ needs.build.outputs.full-image }}'"
-
   deploy:
     name: Deploy (Blue-Green)
-    needs: [build, debug-output]
+    needs: build
     uses: katalinaino/shared-workflows/.github/workflows/deploy-bluegreen-template.yaml@main
     with:
-      full-image: ${{ needs.build.outputs.full-image }}
+      image-name: demo-api
+      image-tag: ${{ github.sha }}
       k3s-server-public-ip: ${{ vars.K3S_SERVER_PUBLIC_IP }}
       k8s-namespace: default
       app-name: demo-api
@@ -43,3 +37,4 @@ jobs:
       env-vars: ${{ inputs.env-vars || 'LOG_LEVEL=info' }}
     secrets:
       EA2_SSH_PRIVATE_KEY: ${{ secrets.EA2_SSH_PRIVATE_KEY }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
