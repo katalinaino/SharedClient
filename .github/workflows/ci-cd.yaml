@@ -1,8 +1,6 @@
 name: CI/CD — TechMarket Orders
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       env-vars:
