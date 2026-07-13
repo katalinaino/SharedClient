@@ -18,7 +18,7 @@ spec:
       serviceAccountName: demo-api-watchdog
       containers:
         - name: watchdog
-          image: bitnami/kubectl:1.30
+          image: alpine/k8s:1.30.0
           command: ["/bin/sh", "/scripts/watchdog.sh"]
           env:
             - name: NAMESPACE
