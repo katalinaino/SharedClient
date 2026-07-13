@@ -1,0 +1,56 @@
+# Bootstrap del slot BLUE. Se aplica una sola vez a mano (o vía el
+# workflow inicial) antes del primer despliegue del pipeline; luego
+# el pipeline actualiza la imagen de este Deployment en cada release
+# donde "blue" sea el slot candidato.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-api-blue
+  labels:
+    app: demo-api
+    slot: blue
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-api
+      slot: blue
+  template:
+    metadata:
+      labels:
+        app: demo-api
+        slot: blue
+    spec:
+      containers:
+        - name: api
+          image: kata63/demo-api:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-api-preview-blue
+spec:
+  type: ClusterIP
+  selector:
+    app: demo-api
+    slot: blue
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
