@@ -22,9 +22,16 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
+  debug-output:
+    name: Debug output
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "full-image output = '${{ needs.build.outputs.full-image }}'"
+
   deploy:
     name: Deploy (Blue-Green)
-    needs: build
+    needs: [build, debug-output]
     uses: katalinaino/shared-workflows/.github/workflows/deploy-bluegreen-template.yaml@main
     with:
       full-image: ${{ needs.build.outputs.full-image }}
