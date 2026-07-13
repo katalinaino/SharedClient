@@ -125,3 +125,46 @@ ssh ubuntu@<IP_K3S> 'sudo k3s kubectl logs -f deployment/demo-api-watchdog -n de
 ```
 
 En ~15 segundos el watchdog debería revertir el Service hacia el otro slot automáticamente.
+
+## 10. Evidencia de prueba real (ensayo de la "Prueba de Fuego")
+
+Se ejecutó una simulación completa contra el clúster real (13-jul-2026) para validar
+los tres ítems de punta a punta:
+
+**Ítem 1 y 2 — Pipeline completo:**
+Run manual en GitHub Actions (`CI/CD — TechMarket Orders`, run `#8`, commit `c7e5db4`):
+Build → Deploy Blue-Green → Health Gate → Promoción, todo en verde (1m 16s).
+Slot activo antes: `blue`. Slot promovido: confirmado vía
+`kubectl get svc demo-api -o jsonpath='{.spec.selector.slot}'`.
+
+**Ítem 3 — Auto-remediación en caliente (watchdog):**
+1. Se rompió intencionalmente el slot activo (`blue`) apuntándolo a una imagen
+   inexistente (`kata63/demo-api:version-que-no-existe`) y forzando el reemplazo
+   de los pods sanos (simulando un error inyectado en producción).
+2. El watchdog, monitoreando `/health` cada 5s, detectó 3 fallos consecutivos
+   (`fails=1/3` → `2/3` → `3/3`).
+3. Ejecutó la reversión automática: escaló `green` a 2 réplicas, parcheó el
+   selector del Service `demo-api` de `blue` a `green`, y escaló `blue` a 0.
+4. Tiempo total de detección + recuperación: **~15 segundos**, sin intervención
+   humana.
+5. Verificación post-remediación: `curl http://<IP>:30090/health` volvió a
+   responder `{"ok":true,...}` y el Service quedó apuntando a `green`.
+
+Log real del watchdog durante el incidente:
+[watchdog] iniciado. namespace=default app=demo-api umbral=3 intervalo=5s
+[watchdog] FALLO detectado en slot activo='blue' (código=000) -> fails=1/3
+[watchdog] FALLO detectado en slot activo='blue' (código=000) -> fails=2/3
+[watchdog] FALLO detectado en slot activo='blue' (código=000) -> fails=3/3
+[watchdog] === AUTO-REMEDIACIÓN === umbral superado. Revirtiendo tráfico de 'blue' a 'green'.
+deployment.apps/demo-api-green scaled
+service/demo-api patched
+deployment.apps/demo-api-blue scaled
+[watchdog] tráfico revertido a 'green'. Slot defectuoso 'blue' escalado a 0
+**Incidente durante las pruebas (documentado para transparencia):** el primer
+intento de romper el Deployment vía `kubectl set image` no bastó, porque
+Kubernetes conservó los pods sanos del ReplicaSet anterior (comportamiento
+estándar de rollout, no un fallo del sistema). Fue necesario forzar el
+reemplazo (`kubectl delete pod` + `kubectl scale rs --replicas=0` sobre el
+ReplicaSet sano) para simular una caída real. Esto confirma que el propio
+Kubernetes ya aporta una primera capa de resiliencia antes de que intervenga
+el watchdog.
