@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-api-watchdog
+  namespace: default
+  labels:
+    app: demo-api-watchdog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-api-watchdog
+  template:
+    metadata:
+      labels:
+        app: demo-api-watchdog
+    spec:
+      serviceAccountName: demo-api-watchdog
+      containers:
+        - name: watchdog
+          image: bitnami/kubectl:1.30
+          command: ["/bin/sh", "/scripts/watchdog.sh"]
+          env:
+            - name: NAMESPACE
+              value: "default"
+            - name: APP_NAME
+              value: "demo-api"
+            - name: FAIL_THRESHOLD
+              value: "3"
+            - name: CHECK_INTERVAL
+              value: "5"
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      volumes:
+        - name: script
+          configMap:
+            name: demo-api-watchdog-script
+            defaultMode: 0755

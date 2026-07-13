@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-api-watchdog-script
+  namespace: default
+data:
+  watchdog.sh: |
+    #!/bin/sh
+    set -u
+    NS="${NAMESPACE:-default}"
+    APP="${APP_NAME:-demo-api}"
+    THRESHOLD="${FAIL_THRESHOLD:-3}"
+    INTERVAL="${CHECK_INTERVAL:-5}"
+    FAILS=0
+
+    echo "[watchdog] iniciado. namespace=${NS} app=${APP} umbral=${THRESHOLD} intervalo=${INTERVAL}s"
+
+    while true; do
+      ACTIVE_SLOT=$(kubectl get svc "${APP}" -n "${NS}" -o jsonpath='{.spec.selector.slot}' 2>/dev/null)
+      CLUSTER_IP=$(kubectl get svc "${APP}" -n "${NS}" -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
+
+      if [ -z "${CLUSTER_IP}" ]; then
+        echo "[watchdog] no se pudo leer el Service ${APP}, reintentando..."
+        sleep "${INTERVAL}"
+        continue
+      fi
+
+      CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://${CLUSTER_IP}:3000/health")
+
+      if [ "${CODE}" = "200" ]; then
+        if [ "${FAILS}" -gt 0 ]; then
+          echo "[watchdog] recuperado. slot activo=${ACTIVE_SLOT} código=${CODE}"
+        fi
+        FAILS=0
+      else
+        FAILS=$((FAILS + 1))
+        echo "[watchdog] FALLO detectado en slot activo='${ACTIVE_SLOT}' (código=${CODE}) -> fails=${FAILS}/${THRESHOLD}"
+      fi
+
+      if [ "${FAILS}" -ge "${THRESHOLD}" ]; then
+        if [ "${ACTIVE_SLOT}" = "blue" ]; then OTHER_SLOT="green"; else OTHER_SLOT="blue"; fi
+
+        echo "[watchdog] === AUTO-REMEDIACIÓN === umbral superado. Revirtiendo tráfico de '${ACTIVE_SLOT}' a '${OTHER_SLOT}'."
+        kubectl scale deployment "${APP}-${OTHER_SLOT}" -n "${NS}" --replicas=2 2>/dev/null || true
+        sleep 2
+        kubectl patch svc "${APP}" -n "${NS}" -p "{\"spec\":{\"selector\":{\"app\":\"${APP}\",\"slot\":\"${OTHER_SLOT}\"}}}"
+        kubectl scale deployment "${APP}-${ACTIVE_SLOT}" -n "${NS}" --replicas=0 2>/dev/null || true
+
+        echo "[watchdog] tráfico revertido a '${OTHER_SLOT}'. Slot defectuoso '${ACTIVE_SLOT}' escalado a 0."
+        FAILS=0
+      fi
+
+      sleep "${INTERVAL}"
+    done
